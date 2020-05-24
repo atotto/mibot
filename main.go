@@ -17,14 +17,13 @@ import (
 )
 
 var (
-	microbitName = flag.String("m", "gevav", "microbit name")
+	microbitName = flag.String("m", "", "microbit name")
 )
 
 var (
 	UART_SERVICE_UUID = ble.MustParse(`6E400001-B5A3-F393-E0A9-E50E24DCCA9E`)
 	TX_CHAR_UUID      = ble.MustParse(`6E400002-B5A3-F393-E0A9-E50E24DCCA9E`)
 	RX_CHAR_UUID      = ble.MustParse(`6E400003-B5A3-F393-E0A9-E50E24DCCA9E`)
-	UUIDS             = []ble.UUID{UART_SERVICE_UUID}
 )
 
 func main() {
@@ -59,7 +58,7 @@ func main() {
 	c := p.FindCharacteristic(ble.NewCharacteristic(RX_CHAR_UUID))
 
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter text: ")
+	fmt.Print("Enter commands: ")
 
 	tc := time.Tick(200 * time.Millisecond)
 	for {
