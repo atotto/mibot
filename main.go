@@ -42,37 +42,53 @@ func main() {
 
 	ble.SetDefaultDevice(device)
 
-	client, err := ble.Connect(ctx, func(a ble.Advertisement) bool {
-		return a.Connectable() && strings.HasPrefix(a.LocalName(), "BBC micro:bit") && strings.Contains(a.LocalName(), *microbitName)
-	})
+	go func() {
+		log.Println("connecting...")
 
-	if err != nil {
-		log.Fatalf("failed to connect: %s", err)
-	}
+		client, err := ble.Connect(ctx, func(a ble.Advertisement) bool {
+			if a.Connectable() && strings.HasPrefix(a.LocalName(), "BBC micro:bit") && strings.Contains(a.LocalName(), *microbitName) {
+				log.Printf("connect to %s", a.LocalName())
+				return true
+			}
+			return false
+		})
+		if err != nil {
+			log.Fatalf("failed to connect: %s", err)
+		}
+		go func() {
+			<-client.Disconnected()
+			cancel()
+		}()
 
-	p, err := client.DiscoverProfile(true)
-	if err != nil {
-		log.Fatalf("failed to discover profile: %s", err)
-	}
-
-	c := p.FindCharacteristic(ble.NewCharacteristic(RX_CHAR_UUID))
-
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter commands: ")
-
-	tc := time.Tick(200 * time.Millisecond)
-	for {
-		b, _ := reader.ReadByte()
-
-		if err := client.WriteCharacteristic(c, []byte{b, 0x0a}, true); err != nil {
-			log.Println("send data: %s", err)
+		p, err := client.DiscoverProfile(true)
+		if err != nil {
+			log.Fatalf("failed to discover profile: %s", err)
 		}
 
-		select {
-		case <-ctx.Done():
-			return
-		case <-tc:
+		c := p.FindCharacteristic(ble.NewCharacteristic(RX_CHAR_UUID))
+
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Println("send commands (w:forward d:left a:right s:backward enter:send ctrl-c:exit)")
+
+		tc := time.Tick(200 * time.Millisecond)
+		for {
+			b, _ := reader.ReadByte()
+
+			if err := client.WriteCharacteristic(c, []byte{b, 0x0a}, true); err != nil {
+				log.Println("send data: %s", err)
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			case <-client.Disconnected():
+				return
+			case <-tc:
+			}
 		}
-	}
+	}()
+
 	<-ctx.Done()
+
+	log.Println("done")
 }
