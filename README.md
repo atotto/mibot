@@ -1,5 +1,7 @@
 # micro:bit robot with BLE control
 
+[![video](https://img.youtube.com/vi/Z31ZHTtBVgU/0.jpg)](https://www.youtube.com/watch?v=Z31ZHTtBVgU)
+
 ## micro:bit code
 
 ![code](./microbit/code.png)
