@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/go-ble/ble"
-	"github.com/go-ble/ble/darwin"
+	"github.com/go-ble/ble/examples/lib/dev"
 )
 
 var (
@@ -35,7 +35,7 @@ func main() {
 		cancel()
 	}()
 
-	device, err := darwin.NewDevice()
+	device, err := dev.DefaultDevice()
 	if err != nil {
 		log.Fatal(err)
 	}
