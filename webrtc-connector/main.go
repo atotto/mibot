@@ -25,7 +25,7 @@ func main() {
 	// Wait for the remote SessionDescription
 	offer, err := exchange.GetSessionOffer(ctx, *sessionID)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	config := webrtc.Configuration{
@@ -43,7 +43,7 @@ func main() {
 	// dynamic media type from the sender in our answer. This is not required if we are the offerer
 	mediaEngine := webrtc.MediaEngine{}
 	if err := mediaEngine.PopulateFromSDP(*offer); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	// Search for VP8 Payload type. If the offer doesn't support VP8 exit since
@@ -56,24 +56,24 @@ func main() {
 		}
 	}
 	if payloadType == 0 {
-		panic("Remote peer does not support VP8")
+		log.Fatal("Remote peer does not support VP8")
 	}
 
 	// Create a new RTCPeerConnection
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(mediaEngine), webrtc.WithSettingEngine(settingEngine))
 	peerConnection, err := api.NewPeerConnection(config)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	// Open a UDP Listener for RTP Packets on port 5004
 	listener, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: 5004})
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer func() {
 		if err = listener.Close(); err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}()
 
@@ -83,22 +83,22 @@ func main() {
 	inboundRTPPacket := make([]byte, 4096) // UDP MTU
 	n, _, err := listener.ReadFromUDP(inboundRTPPacket)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	// Unmarshal the incoming packet
 	packet := &rtp.Packet{}
 	if err = packet.Unmarshal(inboundRTPPacket[:n]); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	// Create a video track, using the same SSRC as the incoming RTP Packet
 	videoTrack, err := peerConnection.NewTrack(payloadType, packet.SSRC, "video", "pion")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	if _, err = peerConnection.AddTrack(videoTrack); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	// Set the handler for ICE connection state
@@ -143,41 +143,40 @@ func main() {
 
 	// Set the remote SessionDescription
 	if err = peerConnection.SetRemoteDescription(*offer); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	// Create answer
 	answer, err := peerConnection.CreateAnswer(nil)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	// Sets the LocalDescription, and starts our UDP listeners
 	if err = peerConnection.SetLocalDescription(answer); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	// Send the answer
 	if err := exchange.CreateSession(ctx, &answer, *sessionID); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	// Read RTP packets forever and send them to the WebRTC Client
 	for {
 		n, _, err := listener.ReadFrom(inboundRTPPacket)
 		if err != nil {
-			fmt.Printf("error during read: %s", err)
-			panic(err)
+			log.Fatalf("error during read: %s", err)
 		}
 
 		packet := &rtp.Packet{}
 		if err := packet.Unmarshal(inboundRTPPacket[:n]); err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		packet.Header.PayloadType = payloadType
 
 		if writeErr := videoTrack.WriteRTP(packet); writeErr != nil {
-			panic(writeErr)
+			log.Fatal(writeErr)
 		}
 	}
 }
