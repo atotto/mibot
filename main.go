@@ -89,7 +89,7 @@ func main() {
 		c := p.FindCharacteristic(ble.NewCharacteristic(RX_CHAR_UUID))
 
 		reader := bufio.NewReader(input)
-		fmt.Println("send commands (w:forward d:left a:right s:backward enter:send ctrl-c:exit)")
+		fmt.Println("send commands (w:forward a:left d:right s:backward enter:send ctrl-c:exit)")
 
 		for {
 			b, _ := reader.ReadByte()
