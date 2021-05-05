@@ -5,6 +5,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -17,7 +18,9 @@ import (
 )
 
 var (
-	microbitName = flag.String("m", "", "microbit name")
+	microbitName    = flag.String("m", "", "microbit name")
+	control         = flag.String("control", "stdin", "control option (stdin|udp)")
+	controlDuration = flag.Duration("control.period", 200*time.Millisecond, "period for continuing control of the command")
 )
 
 var (
@@ -27,6 +30,24 @@ var (
 )
 
 func main() {
+	flag.Parse()
+
+	var input io.Reader
+	s := *control
+	switch {
+	case s == "stdin":
+		input = os.Stdin
+	case strings.HasPrefix(s, "udp"):
+		conn, err := optUDPConn(s)
+		if err != nil {
+			log.Fatal(err)
+		}
+		input = conn
+		defer conn.Close()
+	default:
+		log.Fatal("invalid control option: %s", s)
+	}
+
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -67,13 +88,11 @@ func main() {
 
 		c := p.FindCharacteristic(ble.NewCharacteristic(RX_CHAR_UUID))
 
-		reader := bufio.NewReader(os.Stdin)
+		reader := bufio.NewReader(input)
 		fmt.Println("send commands (w:forward d:left a:right s:backward enter:send ctrl-c:exit)")
 
-		tc := time.Tick(200 * time.Millisecond)
 		for {
 			b, _ := reader.ReadByte()
-
 			if err := client.WriteCharacteristic(c, []byte{b, 0x0a}, true); err != nil {
 				log.Println("send data: %s", err)
 			}
@@ -83,7 +102,7 @@ func main() {
 				return
 			case <-client.Disconnected():
 				return
-			case <-tc:
+			case <-time.After(*controlDuration):
 			}
 		}
 	}()
