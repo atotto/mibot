@@ -19,15 +19,21 @@ import (
 )
 
 var (
-	sessionID   = flag.String("session", "test", "Session ID")
-	commandPath = flag.String("c", "../mibot", "execution command path")
-	commandArgs = flag.String("arg", "", "exacution command arg")
+	sessionID      = flag.String("session", "test", "Session ID")
+	commandPath    = flag.String("c", "../mibot", "execution command path")
+	commandArgs    = flag.String("arg", "", "exacution command arg")
+	rtpPort        = flag.Int("rtpPort", 5004, "RTP Port")
+	videoCodecName = flag.String("codec", "VP8", "Codec Type")
 )
 
 var config = webrtc.Configuration{
 	ICEServers: []webrtc.ICEServer{
 		{
-			URLs: []string{"stun:stun.l.google.com:19302"},
+			URLs: []string{
+				"stun:stun.l.google.com:19302",
+				"stun:stun.webrtc.ecl.ntt.com:3478",
+				"stun:stun.cloudflare.com:3478",
+			},
 		},
 	},
 }
@@ -54,14 +60,15 @@ func runSession(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// Open a UDP Listener for RTP Packets on port 5004
-	listener, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: 5004})
+	// Open a UDP Listener for RTP Packets on port `rtpPort`
+	//listener, err := net.ListenPacket("udp", fmt.Sprintf("%s:%d", "127.0.0.1", *rtpPort))
+	listener, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: *rtpPort})
 	if err != nil {
 		return fmt.Errorf(": %s", err)
 	}
 	defer listener.Close()
 
-	log.Println("Waiting for RTP Packets on port 5004, please run GStreamer or ffmpeg now")
+	log.Printf("Waiting for RTP Packets on port %s, please run GStreamer or ffmpeg now", listener.LocalAddr().String())
 
 	// Listen for a single RTP Packet, we need this to determine the SSRC
 	inboundRTPPacket := make([]byte, 4096) // UDP MTU
@@ -93,11 +100,11 @@ func runSession(ctx context.Context) error {
 		return fmt.Errorf("SDP: %s", err)
 	}
 
-	// Search for VP8 Payload type. If the offer doesn't support VP8 exit since
+	// Search for `videoCodecName` Payload type. If the offer doesn't support specified codec exit
 	// since they won't be able to decode anything we send them
 	var payloadType uint8
 	for _, videoCodec := range mediaEngine.GetCodecsByKind(webrtc.RTPCodecTypeVideo) {
-		if videoCodec.Name == "VP8" {
+		if videoCodec.Name == *videoCodecName {
 			payloadType = videoCodec.PayloadType
 			break
 		}
