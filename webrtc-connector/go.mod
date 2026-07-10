@@ -1,6 +1,6 @@
 module github.com/atotto/mibot/webrtc-connector
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/atotto/webrtc-sdp-exchanger/exchange v0.2.0
@@ -26,7 +26,7 @@ require (
 	github.com/pion/transport/v4 v4.0.1 // indirect
 	github.com/pion/turn/v4 v4.0.0 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
-	golang.org/x/crypto v0.45.0 // indirect
-	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
+	golang.org/x/net v0.54.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 )
